@@ -13,7 +13,7 @@ import os
 # Инициализация переменных окружения и бота
 load_dotenv()
 storage = MemoryStorage()
-bot = Bot(token=os.getenv('TOKEN'), parse_mode=types.ParseMode.HTML)
+bot = Bot(token=os.getenv('TOKEN'))
 dp = Dispatcher(storage=storage)
 
 admin_ids_str = os.getenv('ADMINS')
@@ -51,7 +51,7 @@ async def adm(message: types.Message):
         await message.reply('Я не знаю такой команды')
 
 
-@dp.message_handler(text='Добавить товар')
+@dp.message(text='Добавить товар')
 async def add_item(message: types.Message):
     if message.from_user.id in admin_ids:
         await NewOrder.type.set()
@@ -60,7 +60,7 @@ async def add_item(message: types.Message):
         await message.reply('Я тебя не понимаю.')
 
 
-@dp.callback_query_handler(state=NewOrder.type)
+@dp.callback_query(state=NewOrder.type)
 async def add_item_type(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['type'] = call.data
@@ -68,7 +68,7 @@ async def add_item_type(call: types.CallbackQuery, state: FSMContext):
     await NewOrder.next()
 
 
-@dp.message_handler(state=NewOrder.name)
+@dp.message(state=NewOrder.name)
 async def add_item_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['name'] = message.text
@@ -76,7 +76,7 @@ async def add_item_name(message: types.Message, state: FSMContext):
     await NewOrder.next()
 
 
-@dp.message_handler(state=NewOrder.desc)
+@dp.message(state=NewOrder.desc)
 async def add_item_desc(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['desc'] = message.text
@@ -84,7 +84,7 @@ async def add_item_desc(message: types.Message, state: FSMContext):
     await NewOrder.next()
 
 
-@dp.message_handler(state=NewOrder.price)
+@dp.message(state=NewOrder.price)
 async def add_item_desc(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['price'] = message.text
@@ -92,12 +92,12 @@ async def add_item_desc(message: types.Message, state: FSMContext):
     await NewOrder.next()
 
 
-@dp.message_handler(lambda message: not message.photo, state=NewOrder.photo)
+@dp.message(lambda message: not message.photo, state=NewOrder.photo)
 async def add_item_photo_check(message: types.Message):
     await message.answer('Это не фотография')
 
 
-@dp.message_handler(content_types=['photo'], state=NewOrder.photo)
+@dp.message(content_types=['photo'], state=NewOrder.photo)
 async def add_item_photo(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['photo'] = message.photo[0].file_id
@@ -106,37 +106,33 @@ async def add_item_photo(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-@dp.message_handler(text='Каталог')
+@dp.message(text='Каталог')
 async def catalog(message: types.Message):
     await message.answer(f'Пока здесь ничего нет, но скоро появится!', reply_markup=kb.catalog_list)
 
 
-@dp.message_handler(text='Информация')
+@dp.message(text='Информация')
 async def catalog(message: types.Message):
     await message.answer(f'Пока здесь ничего нет, но скоро появится!')
 
 
-@dp.message_handler(text='Корзина')
+@dp.message(text='Корзина')
 async def cart(message: types.Message):
     await message.answer(f'Ваша корзина пуста!')
 
 
-@dp.message_handler(text='Контакты')
+@dp.message(text='Контакты')
 async def contacts(message: types.Message):
     await message.answer(f'По всем вопросам обращайтесь к @0')
 
 
-@dp.message_handler(content_types=['sticker'])
-async def sticker(message: types.Message):
-    await bot.send_message(message.from_user.id, message.chat.id)
 
-
-@dp.message_handler()
+@dp.message()
 async def answer(message: types.Message):
     await message.reply(f'Я не знаю такой команды')
 
 
-@dp.callback_query_handler()
+@dp.callback_query()
 async def callback_query_keyboard(callback_query: types.CallbackQuery):
     if callback_query.data == 't-shirt':
         await bot.send_message(chat_id=callback_query.from_user.id, text='Каталог футболок')
@@ -147,4 +143,4 @@ async def callback_query_keyboard(callback_query: types.CallbackQuery):
 
 
 if __name__ == '__main__':
-    dp.start_polling(dp, skip_updates=True)
+    dp.start_polling(bot)
