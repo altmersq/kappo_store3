@@ -39,27 +39,27 @@ async def go_to_catalog(message: types.Message):
 
 
 @dp.message(F.text.lower() == 'корзина')
-async def go_to_catalog(message: types.Message):
+async def go_to_cart(message: types.Message):
     await message.answer('В корзине пока ничего нет')
 
 
 @dp.message(F.text.lower() == 'мой заказ')
-async def go_to_catalog(message: types.Message):
+async def go_to_order(message: types.Message):
     await message.answer('Ваш заказ пуст')
 
 
 @dp.message(F.text.lower() == 'контакты')
-async def go_to_catalog(message: types.Message):
+async def go_to_contacts(message: types.Message):
     await message.answer('По всем вопросам обращаться к t.me/0')
 
 
 @dp.message(F.text.lower() == 'о магазине')
-async def go_to_catalog(message: types.Message):
+async def go_to_about(message: types.Message):
     await message.answer(' ')
 
 
 @dp.message(F.text.lower() == 'управление')
-async def go_to_catalog(message: types.Message):
+async def go_to_admin_panel(message: types.Message):
     if message.from_user.id in admin_ids:
         await message.answer('Панель управления')
     else:
@@ -73,9 +73,14 @@ async def adm_info(message: types.Message, started_at: str):
 
 
 @dp.message()
-async def unknown_com(message: types.Message):
+async def unknown_command(message: types.Message):
     await message.answer('Я не знаю такой команды', reply_markup=kb.help_inline_keyboard())
 
+
+@dp.callback_query(F.data == "help")
+async def help_command(callback: types.CallbackQuery):
+    await callback.message.answer("noone will help you")
+    await callback.answer()
 
 
 async def main():
