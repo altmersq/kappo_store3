@@ -1,0 +1,27 @@
+from aiogram import Router, F
+from aiogram import types
+from aiogram.filters import Command
+from app.cfg_reader import config
+from app.keyboards import admin_keyboards as admin_kb
+import app.keyboards.user_keyboards as user_kb
+
+from datetime import datetime
+
+admin_ids = [int(admin_id) for admin_id in config.admins.split(',')]
+router = Router()
+started_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
+@router.message(F.text.lower() == 'управление')
+async def go_to_admin_panel(message: types.Message):
+    if message.from_user.id in admin_ids:
+        await message.answer('Панель управления')
+    else:
+        await message.answer('Я не знаю такой команды', reply_markup=user_kb.help_inline_keyboard())
+
+
+@router.message(Command("adm_info"))
+async def adm_info(message: types.Message, started_at: str):
+    if message.from_user.id in admin_ids:
+        await message.answer(f"Bot started at {started_at}")
+
