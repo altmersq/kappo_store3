@@ -14,3 +14,15 @@ def main_menu_keyboard_admin():
                                    resize_keyboard=True,
                                    input_field_placeholder="Выберите пункт из меню")
     return keyboard
+
+
+def admin_panel_keyboard():
+    kb = [
+        [KeyboardButton(text="Редактировать каталог")],
+        [KeyboardButton(text="Создать рассылку")],
+        [KeyboardButton(text="Выйти из админ панели")],
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb,
+                                   resize_keyboard=True,
+                                   input_field_placeholder="Выберите пункт из меню")
+    return keyboard

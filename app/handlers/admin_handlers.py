@@ -19,7 +19,7 @@ async def go_to_admin_panel(message: types.Message):
     if message.from_user.id not in admin_ids:
         await message.answer('Я не знаю такой команды', reply_markup=user_kb.help_inline_keyboard())
     else:
-        await message.answer(("fadf"))
+        await message.answer("adm_panel", reply_markup=admin_kb.admin_panel_keyboard())
 
 
 @router.message(Command("adm_info"))
