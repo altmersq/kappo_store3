@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     bot_token: SecretStr
     group_id: SecretStr
     admins: str
+    db_url: str
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
