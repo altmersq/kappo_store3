@@ -55,12 +55,3 @@ async def get_items():
         async with db.execute('SELECT * FROM items') as cursor:
             return await cursor.fetchall()
 
-
-# ... Добавьте другие функции, которые вам нужны для работы с базой данных
-
-# Пример использования функций:
-# asyncio.run(db_start())
-# asyncio.run(add_account(tg_id, cart_id))
-# asyncio.run(add_item(name, desc, price, photo))
-# accounts = asyncio.run(get_accounts())
-# items = asyncio.run(get_items())
