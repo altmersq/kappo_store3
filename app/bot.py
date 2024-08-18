@@ -8,6 +8,7 @@ from handlers import admin_handlers, common_handlers, user_handlers
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.cfg_reader import config
 
+
 async def main():
     load_dotenv()
 
@@ -17,10 +18,10 @@ async def main():
     # debug logs
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    db_url = config.db_url
-
-    engine = create_async_engine(url=db_url, echo=True)
-    sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+    # db_url = config.db_url
+    #
+    # engine = create_async_engine(url=db_url, echo=True)
+    # sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
     bot = Bot(token=config.bot_token.get_secret_value(), parse_mode="HTML")
     dp = Dispatcher()
