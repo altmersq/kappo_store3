@@ -5,6 +5,8 @@ from app.cfg_reader import config
 from app.keyboards import admin_keyboards as admin_kb
 import app.keyboards.user_keyboards as user_kb
 from app.filters.chat_type import ChatTypeFilter
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database.crud import add_user
 
 admin_ids = [int(admin_id) for admin_id in config.admins.split(',')]
 
@@ -13,7 +15,16 @@ router.message.filter(ChatTypeFilter(chat_type=["private"]))
 
 
 @router.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, session: AsyncSession):
+    # Добавление пользователя в базу данных
+    await add_user(
+        session=session,
+        telegram_id=message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+    )
+
     await message.answer("started", reply_markup=user_kb.main_menu_keyboard())
     if message.from_user.id in admin_ids:
         await message.answer("adm mode", reply_markup=admin_kb.main_menu_keyboard_admin())
@@ -44,6 +55,6 @@ async def go_to_about(message: types.Message):
     await message.answer('about')
 
 
-@router.message()
-async def unknown_command(message: types.Message):
-    await message.answer('Я не знаю такой команды', reply_markup=user_kb.help_inline_keyboard())
+# @router.message()
+# async def unknown_command(message: types.Message):
+#     await message.answer('Я не знаю такой команды', reply_markup=user_kb.help_inline_keyboard())
