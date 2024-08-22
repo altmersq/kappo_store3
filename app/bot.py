@@ -3,10 +3,8 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher
 from datetime import datetime
-from cfg_reader import config
 from handlers import admin_handlers, common_handlers, user_handlers
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from app.cfg_reader import config
 from app.database.db import *
 
 
@@ -24,7 +22,7 @@ async def main():
 
     await init_db()
 
-    engine = create_async_engine(url=db_url, echo=True)
+    engine = create_async_engine(url=db_url, echo=False  )
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
     await create_tables(engine)
