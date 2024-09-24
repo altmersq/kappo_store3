@@ -25,6 +25,12 @@ class CatalogStates(StatesGroup):
     in_main_menu = State()
 
 
+class CartStates(StatesGroup):
+    viewing_cart = State()
+    viewing_item = State()
+    checkout = State()
+
+
 @router.message(Command("start"))
 async def cmd_start(message: types.Message, session: AsyncSession):
     await add_user(
@@ -57,7 +63,7 @@ async def show_catalog(message: types.Message, state: FSMContext, session: Async
     await message.answer("Выберите категорию:", reply_markup=inline_kb)
     await state.set_state(CatalogStates.choosing_category)
 
-# Хэндлер для обработки выбора категории и отображения первого товара
+
 @router.callback_query(CatalogStates.choosing_category, F.data.startswith("category_"))
 async def show_first_item(callback_query: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     category = callback_query.data.split("_")[1]
@@ -79,7 +85,7 @@ async def show_first_item(callback_query: types.CallbackQuery, state: FSMContext
         await callback_query.message.answer("В этой категории пока нет товаров.")
     await callback_query.answer()
 
-# Хэндлер для обработки нажатия на кнопку "Следующий"
+
 @router.callback_query(CatalogStates.viewing_item, F.data == "next_item")
 async def show_next_item(callback_query: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     user_data = await state.get_data()
@@ -118,7 +124,7 @@ async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, se
         user = result.fetchone()
 
         if not user:
-            await callback_query.answer("Пользователь не найден.")
+            await callback_query.answer("Пользователь не найден.1")
             return
 
         user_id = user.id
@@ -143,7 +149,6 @@ async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, se
             await callback_query.answer("Товар уже в корзине.")
 
     user_data = await state.get_data()
-    #await send_catalog_item(callback_query.message, item_id, user_data['category'], session)
 
 
 @router.callback_query(CatalogStates.viewing_item, F.data == "prev_item")
@@ -169,17 +174,15 @@ async def show_prev_item(callback_query: types.CallbackQuery, state: FSMContext,
     else:
         await callback_query.answer("Это первый товар в этой категории.")
 
-# Функция для отправки информации о товаре с кнопками
+
 async def send_catalog_item(message: types.Message, item_id: int, category: str, session: AsyncSession):
     async with session.begin():
-        # Получаем информацию о товаре
         result = await session.execute(
             text("SELECT * FROM catalog WHERE id = :item_id"),
             {"item_id": item_id}
         )
         item = result.fetchone()
 
-        # Проверяем, находится ли товар в корзине у текущего пользователя
         user_id = message.from_user.id
         result = await session.execute(
             text("SELECT 1 FROM cart WHERE user_id = :user_id AND product_id = :product_id"),
@@ -187,10 +190,8 @@ async def send_catalog_item(message: types.Message, item_id: int, category: str,
         )
         item_in_cart = result.scalar()
 
-    # Формируем текст сообщения
     text_msg = f"<b>{item.name}</b>\nЦена: {item.price} руб.\n{item.description}"
 
-    # Инлайн-кнопки для навигации и добавления в корзину
     kb = [
         [
             types.InlineKeyboardButton(text="Предыдущий", callback_data="prev_item"),
@@ -203,7 +204,6 @@ async def send_catalog_item(message: types.Message, item_id: int, category: str,
         kb.append([types.InlineKeyboardButton(text="В корзину", callback_data=f"add_to_cart_{item.id}")])
     inline_kb = types.InlineKeyboardMarkup(inline_keyboard=kb)
 
-    # Обычная клавиатура для возврата в главное меню
     main_menu_kb = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Вернуться в главное меню")],
@@ -211,11 +211,10 @@ async def send_catalog_item(message: types.Message, item_id: int, category: str,
         resize_keyboard=True
     )
 
-    # Отправляем фото и текст с инлайн-кнопками и обычной клавиатурой
     await message.answer_photo(photo=item.photo, caption=text_msg, reply_markup=inline_kb)
     await message.answer("Вы можете вернуться в главное меню.", reply_markup=main_menu_kb)
 
-# Хэндлер для возврата в главное меню
+
 @router.message(CatalogStates.viewing_item, F.text == "Вернуться в главное меню")
 async def back_to_main_menu(message: types.Message, state: FSMContext):
     await message.delete()
@@ -224,11 +223,17 @@ async def back_to_main_menu(message: types.Message, state: FSMContext):
     await state.set_state(CatalogStates.in_main_menu)
 
 
-@router.message(F.text.lower() == 'корзина')
-async def go_to_cart(message: types.Message, session: AsyncSession):
-    telegram_id = message.from_user.id
+@router.message(F.text.lower() == "корзина")
+async def go_to_cart(event, state: FSMContext, session: AsyncSession):
+    if isinstance(event, types.Message):
+        telegram_id = event.from_user.id
+        bot = event.bot
+    elif isinstance(event, types.CallbackQuery):
+        telegram_id = event.from_user.id
+        bot = event.bot
+    else:
+        return
 
-    # Находим id пользователя по telegram_id
     async with session.begin():
         result = await session.execute(
             text("SELECT id FROM users WHERE telegram_id = :telegram_id"),
@@ -237,54 +242,112 @@ async def go_to_cart(message: types.Message, session: AsyncSession):
         user = result.fetchone()
 
         if not user:
-            await message.answer("Пользователь не найден.")
+            await bot.send_message(chat_id=telegram_id, text="Пользователь не найден.")
             return
 
         user_id = user.id
 
-        # Получаем все товары в корзине пользователя
+        await state.update_data(user_id=user_id)
+
         result = await session.execute(
-            text("""
-                SELECT c.id AS cart_id, p.name, p.id AS product_id 
-                FROM cart c
-                JOIN catalog p ON c.product_id = p.id
-                WHERE c.user_id = :user_id
-            """),
+            text("SELECT catalog.id, catalog.name, catalog.price FROM cart "
+                 "JOIN catalog ON cart.product_id = catalog.id "
+                 "WHERE cart.user_id = :user_id"),
             {"user_id": user_id}
         )
         items = result.fetchall()
 
     if not items:
-        await message.answer("Ваша корзина пуста.")
+        await bot.send_message(chat_id=telegram_id, text="Ваша корзина пуста.")
         return
 
-        # Формируем сообщение с товарами в корзине и кнопками для их удаления
-    message_text = "Ваши товары в корзине:\n\n"
-    kb = InlineKeyboardMarkup(inline_keyboard=[])  # Пустой массив передаем для корректного создания объекта
+    items = [dict(item._mapping) for item in items]
 
-    for item in items:
-        kb.inline_keyboard.append(
-            [InlineKeyboardButton(text=f"Убрать {item.name} из корзины", callback_data=f"remove_{item.cart_id}")])
+    await state.update_data(items=items, current_page=0)
+    keyboard = user_kb.cart_keyboard(items=items, page=0)
+    await bot.send_message(chat_id=telegram_id, text="Ваши товары в корзине:", reply_markup=keyboard)
 
-    await message.answer(message_text, reply_markup=kb)
+    await state.set_state(CartStates.viewing_cart)
 
 
-@router.callback_query(F.data.startswith("remove_"))
-async def remove_from_cart(callback_query: types.CallbackQuery, session: AsyncSession):
-    cart_id = int(callback_query.data.split("_")[1])
+@router.callback_query(CartStates.viewing_cart, F.data.in_(["prev_page", "next_page"]))
+async def paginate_cart(callback_query: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    items = data.get("items")
+    current_page = data.get("current_page", 0)
+
+    if callback_query.data == "prev_page":
+        current_page -= 1
+    elif callback_query.data == "next_page":
+        current_page += 1
+
+    await state.update_data(current_page=current_page)
+    keyboard = user_kb.cart_keyboard(items, page=current_page)
+    await callback_query.message.edit_reply_markup(reply_markup=keyboard)
+
+    await callback_query.answer()
+
+
+@router.callback_query(F.data.startswith("view_"))
+async def view_cart_item(callback_query: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    item_id = int(callback_query.data.split("_")[1])
 
     async with session.begin():
-        # Удаляем товар из корзины
-        await session.execute(
-            text("DELETE FROM cart WHERE id = :cart_id"),
-            {"cart_id": cart_id}
+        result = await session.execute(
+            text("SELECT * FROM catalog WHERE id = :item_id"), {"item_id": item_id}
         )
-        await session.commit()
+        item = result.fetchone()
 
-    await callback_query.answer("Товар удален из корзины.")
+    if not item:
+        await callback_query.message.answer("Товар не найден.")
+        return
 
-    # Обновляем список товаров в корзине
-    await go_to_cart(callback_query.message, session)
+    text_message = f"<b>{item.name}</b>\nЦена: {item.price} руб.\n{item.description}"
+
+    kb = [
+        [types.InlineKeyboardButton(text="Удалить", callback_data=f"remove_from_cart_{item.id}")],
+        [types.InlineKeyboardButton(text="Вернуться в корзину", callback_data="back_to_cart")]
+    ]
+    inline_kb = types.InlineKeyboardMarkup(inline_keyboard=kb)
+
+    await callback_query.message.edit_text(text_message, reply_markup=inline_kb)
+    await callback_query.answer()
+
+
+@router.callback_query(F.data.startswith("remove_from_cart_"))
+async def remove_from_cart(callback_query: types.CallbackQuery, session: AsyncSession, state: FSMContext):
+    if callback_query.from_user:
+        item_id = int(callback_query.data.split("_")[3])
+        user_data = await state.get_data()
+        user_id = user_data.get('user_id')
+
+        if user_id is None:
+            await callback_query.answer("Ошибка: Пользователь не найден.")
+            return
+
+        async with session.begin():
+            await session.execute(
+                text("DELETE FROM cart WHERE user_id = :user_id AND product_id = :item_id"),
+                {"user_id": user_id, "item_id": item_id}
+            )
+            await session.commit()
+
+        await callback_query.answer("Товар удален из корзины.")
+        await go_to_cart(callback_query, state, session)
+    else:
+        await callback_query.answer("Произошла ошибка: Неверный запрос.")
+
+
+@router.callback_query(F.data == "back_to_cart")
+async def back_to_cart(callback_query: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    await go_to_cart(callback_query, state, session)
+
+
+@router.callback_query(CartStates.viewing_cart, F.data == "checkout")
+async def checkout(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.message.edit_text("Для оплаты переведите сумму на номер карты: XXXX-XXXX-XXXX-XXXX.\n"
+                                           "После оплаты свяжитесь с нами для подтверждения заказа.")
+    await state.set_state(CartStates.checkout)
 
 
 @router.message(F.text.lower() == 'мой заказ')

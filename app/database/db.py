@@ -9,12 +9,10 @@ from app.models.models import Base
 
 async def create_tables(engine):
     async with engine.begin() as conn:
-        # Создаем все таблицы, если они еще не существуют
         await conn.run_sync(Base.metadata.create_all)
         print("Таблицы созданы или уже существовали.")
 
 
-# Функция для создания и возврата асинхронного движка и сессии
 def get_engine_and_sessionmaker(db_url):
     engine = create_async_engine(url=db_url, echo=True)
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
