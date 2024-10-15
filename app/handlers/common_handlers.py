@@ -257,15 +257,19 @@ async def go_to_cart(event, state: FSMContext, session: AsyncSession):
         )
         items = result.fetchall()
 
+    print(items)
     if not items:
         await bot.send_message(chat_id=telegram_id, text="Ваша корзина пуста.")
         return
+
+    total_sum = sum(item.price for item in items)
 
     items = [dict(item._mapping) for item in items]
 
     await state.update_data(items=items, current_page=0)
     keyboard = user_kb.cart_keyboard(items=items, page=0)
-    await bot.send_message(chat_id=telegram_id, text="Ваши товары в корзине:", reply_markup=keyboard)
+    await bot.send_message(chat_id=telegram_id, text=f"Ваши товары в корзине (общая сумма: {total_sum} руб.)",
+                           reply_markup=keyboard)
 
     await state.set_state(CartStates.viewing_cart)
 
@@ -310,7 +314,15 @@ async def view_cart_item(callback_query: types.CallbackQuery, state: FSMContext,
     ]
     inline_kb = types.InlineKeyboardMarkup(inline_keyboard=kb)
 
-    await callback_query.message.edit_text(text_message, reply_markup=inline_kb)
+    if not callback_query.message.photo:
+        await callback_query.message.delete()
+        await callback_query.message.answer_photo(photo=item.photo, caption=text_message, reply_markup=inline_kb, parse_mode="HTML")
+    else:
+        await callback_query.message.edit_media(
+            types.InputMediaPhoto(media=item.photo, caption=text_message, parse_mode="HTML"),
+            reply_markup=inline_kb
+        )
+
     await callback_query.answer()
 
 
