@@ -139,8 +139,8 @@ async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, se
 
         if not item_in_cart:
             await session.execute(
-                text("INSERT INTO cart (user_id, product_id) VALUES (:user_id, :product_id)"),
-                {"user_id": user_id, "product_id": item_id}
+                text("INSERT INTO cart (user_id, product_id, quantity) VALUES (:user_id, :product_id, :quantity)"),
+                {"user_id": user_id, "product_id": item_id, "quantity": 1}
             )
             await session.commit()
 

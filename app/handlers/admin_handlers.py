@@ -49,8 +49,18 @@ async def edit_catalog_handler(message: types.Message):
 
 
 @router.message(F.text.lower() == 'добавить позицию')
-async def add_position(message: types.Message, state:FSMContext):
-    await message.answer("Выберите категорию товара:", reply_markup=admin_kb.category_keyboard())
+async def add_position(message: types.Message, state: FSMContext, session: AsyncSession):
+    async with session.begin():
+        result = await session.execute(text("SELECT DISTINCT category FROM catalog"))
+        categories = [row[0] for row in result.fetchall()]
+
+    if categories:
+        await state.update_data(categories=categories, current_page=0)
+        await message.answer("Выберите категорию товара или введите новую категорию:",
+                             reply_markup=admin_kb.category_keyboard(categories))
+    else:
+        await message.answer("Категорий пока нет. Пожалуйста, введите категорию:")
+
     await state.set_state(AddProduct.waiting_for_category)
 
 

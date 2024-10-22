@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 CATEGORIES_PER_PAGE = 7
 PRODUCTS_PER_PAGE = 7
 
+
 def main_menu_keyboard_admin():
     kb = [
         [KeyboardButton(text="Каталог")],
@@ -58,25 +59,26 @@ def edit_catalog_keyboard():
 
 def category_keyboard(categories, page=0):
     """
-    Клавиатура с категориями и кнопками навигации
+    Клавиатура с категориями и кнопками навигации.
     """
     kb = []
-    start_index = page * CATEGORIES_PER_PAGE
-    end_index = start_index + CATEGORIES_PER_PAGE
+    if not categories:
+        kb.append([KeyboardButton(text="Категории отсутствуют. Введите название новой категории.")])
+    else:
+        start_index = page * CATEGORIES_PER_PAGE
+        end_index = start_index + CATEGORIES_PER_PAGE
 
-    # Кнопки для категорий
-    for category in categories[start_index:end_index]:
-        kb.append([KeyboardButton(text=category)])
+        for category in categories[start_index:end_index]:
+            kb.append([KeyboardButton(text=category)])
 
-    # Добавляем кнопки навигации, если это необходимо
-    navigation_buttons = []
-    if page > 0:
-        navigation_buttons.append(KeyboardButton(text="⬅️ Назад"))
-    if end_index < len(categories):
-        navigation_buttons.append(KeyboardButton(text="➡️ Вперед"))
+        navigation_buttons = []
+        if page > 0:
+            navigation_buttons.append(KeyboardButton(text="⬅️ Назад"))
+        if end_index < len(categories):
+            navigation_buttons.append(KeyboardButton(text="➡️ Вперед"))
 
-    if navigation_buttons:
-        kb.append(navigation_buttons)
+        if navigation_buttons:
+            kb.append(navigation_buttons)
 
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True, input_field_placeholder="Выберите категорию")
     return keyboard
@@ -90,11 +92,9 @@ def product_keyboard(products, page=0):
     start_index = page * PRODUCTS_PER_PAGE
     end_index = start_index + PRODUCTS_PER_PAGE
 
-    # Кнопки для товаров
     for product in products[start_index:end_index]:
         kb.append([KeyboardButton(text=product)])
 
-    # Добавляем кнопки навигации
     navigation_buttons = []
     if page > 0:
         navigation_buttons.append(KeyboardButton(text="⬅️ Назад"))

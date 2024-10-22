@@ -3,7 +3,7 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher
 from datetime import datetime
-from handlers import admin_handlers, common_handlers, user_handlers
+from app.handlers import admin_handlers, common_handlers, user_handlers
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.database.db import *
 
