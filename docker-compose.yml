@@ -8,7 +8,8 @@ services:
     volumes:
       - .:/app
     env_file:
-      - ./app/.env
+#      - ./app/.env
+      - .env
     depends_on:
       - kappo_db
     networks:

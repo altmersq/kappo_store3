@@ -21,11 +21,18 @@ started_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
 class AddProduct(StatesGroup):
+    choosing_add_type = State()
+    waiting_for_adding_type = State()
     waiting_for_category = State()
     waiting_for_name = State()
     waiting_for_description = State()
     waiting_for_price = State()
     waiting_for_photo = State()
+
+
+class ImportProducts(StatesGroup):
+    waiting_for_file = State()
+    processing_file = State()
 
 
 class RemoveProduct(StatesGroup):
@@ -38,30 +45,58 @@ async def go_to_admin_panel(message: types.Message):
     await message.answer("adm_panel", reply_markup=admin_kb.admin_panel_keyboard())
 
 
-@router.message(Command("adm_info"))
-async def adm_info(message: types.Message, started_at: str):
-    await message.answer(f"Bot started at {started_at}")
-
-
 @router.message(F.text.lower() == 'редактировать каталог')
 async def edit_catalog_handler(message: types.Message):
     await message.answer("Выберите действие", reply_markup=admin_kb.edit_catalog_keyboard())
 
 
 @router.message(F.text.lower() == 'добавить позицию')
-async def add_position(message: types.Message, state: FSMContext, session: AsyncSession):
-    async with session.begin():
-        result = await session.execute(text("SELECT DISTINCT category FROM catalog"))
-        categories = [row[0] for row in result.fetchall()]
+async def add_position(message: types.Message, state: FSMContext):
+    kb = [
+        [KeyboardButton(text="Добавить вручную")],
+        [KeyboardButton(text="Импорт из таблицы")],
+    ]
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer("Выберите способ добавления товара:", reply_markup=keyboard)
+    await state.set_state(AddProduct.choosing_add_type)
 
-    if categories:
-        await state.update_data(categories=categories, current_page=0)
-        await message.answer("Выберите категорию товара или введите новую категорию:",
-                             reply_markup=admin_kb.category_keyboard(categories))
+
+@router.message(AddProduct.choosing_add_type)
+async def add_type_chosen(message: types.Message, state: FSMContext):
+    if message.text == "Добавить вручную":
+        await state.update_data(add_type="manual")
+        await add_position_manually(message, state)
+    elif message.text == "Импорт из таблицы":
+        await state.update_data(add_type="import")
+        await message.answer("Пожалуйста, загрузите файл с таблицей (Excel или Google Sheets):", reply_markup=ReplyKeyboardRemove())
+        await state.set_state(ImportProducts.waiting_for_file)
     else:
-        await message.answer("Категорий пока нет. Пожалуйста, введите категорию:")
+        await message.answer("Пожалуйста, выберите правильный способ добавления.")
 
+
+async def add_position_manually(message: types.Message, state: FSMContext):
+    data = await state.get_data()  # Получаем данные состояния
+    await message.answer("Выберите категорию товара или введите новую категорию:")
     await state.set_state(AddProduct.waiting_for_category)
+
+
+@router.message(ImportProducts.waiting_for_file, F.content_type == types.ContentType.DOCUMENT)
+async def file_received(message: types.Message, state: FSMContext):
+    document = message.document
+    file_id = document.file_id
+
+    await state.update_data(file_id=file_id)
+
+    await message.answer("Файл получен, начинаю обработку.")
+    await process_imported_file(message, state)
+
+
+async def process_imported_file(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    file_id = user_data.get("file_id")
+
+    await message.answer("Импорт товаров завершен. (нет)")
+    await state.clear()
 
 
 @router.message(AddProduct.waiting_for_category)
